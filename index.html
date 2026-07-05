@@ -301,8 +301,7 @@
 <!-- Tap button -->
 <div class="tap-area">
   <button class="tap-btn" id="tapBtn" onclick="handleTap(event)">
-    <img class="hamster-img" id="hamsterImg" src="hamster_start.png" alt="Хомяк"
-         onerror="this.style.fontSize='80px';this.style.display='flex';this.style.alignItems='center';this.style.justifyContent='center';this.outerHTML='<span style=\'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:90px;\'>🐹</span>'">
+    <img class="hamster-img" id="hamsterImg" src="hamster_start.png" alt="🐹" onerror="this.onerror=null;this.src='';this.alt='🐹';this.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:90px;line-height:1;'">
   </button>
 </div>
 
@@ -323,9 +322,12 @@
 
   let coins = 0;
   let level = 0;
-  let tapProgress = 0; // actual tap count for current level
-  let totalCoinsNeeded = [100, 400, 500]; // display goals
-  let coinsThisLevel = 0;
+  let tapsThisLevel = 0;      // raw taps on current level
+  let levelingUp = false;     // lock to prevent double level-up
+  // Tap goals per level (actual taps needed)
+  const TAP_GOALS = [100, 200, 167];
+  // Display goals (shown in UI)
+  const DISPLAY_GOALS = [100, 400, 500];
 
   const coinCountEl   = document.getElementById('coinCount');
   const progressFill  = document.getElementById('progressFill');
@@ -339,12 +341,11 @@
   const overlayText   = document.getElementById('levelupText');
 
   function handleTap(e) {
-    if (level >= LEVELS.length) return;
+    if (level >= LEVELS.length || levelingUp) return;
 
     const lv = LEVELS[level];
     coins += lv.reward;
-    tapProgress++;
-    coinsThisLevel += lv.reward;
+    tapsThisLevel++;
 
     // Update coin display
     coinCountEl.textContent = formatNum(coins);
@@ -358,50 +359,52 @@
     // Ripple
     spawnRipple(e);
 
-    // Progress
-    const displayGoal = totalCoinsNeeded[level];
-    const pct = Math.min(coinsThisLevel / displayGoal * 100, 100);
+    // Progress — show in display coins for UI clarity
+    const tapGoal   = TAP_GOALS[level];
+    const dispGoal  = DISPLAY_GOALS[level];
+    const dispDone  = Math.min(tapsThisLevel * lv.reward, dispGoal);
+    const pct       = Math.min(tapsThisLevel / tapGoal * 100, 100);
     progressFill.style.width = pct + '%';
-
-    const displayProgress = Math.min(coinsThisLevel, displayGoal);
-    progressLabel.textContent = `Монет: ${displayProgress} / ${displayGoal}`;
+    progressLabel.textContent = `Монет: ${dispDone} / ${dispGoal}`;
 
     // Check level up
-    if (coinsThisLevel >= displayGoal) {
-      setTimeout(levelUp, 300);
+    if (tapsThisLevel >= tapGoal) {
+      levelingUp = true;
+      setTimeout(levelUp, 350);
     }
   }
 
   function levelUp() {
     level++;
-    coinsThisLevel = 0;
+    tapsThisLevel = 0;
     progressFill.style.width = '0%';
 
     if (level >= LEVELS.length) {
-      // Max level reached
       levelBadge.textContent = '🏆 МАКСИМАЛЬНЫЙ УРОВЕНЬ!';
       rewardLabel.textContent = '👑 Ты — Профи Хомяк!';
       progressLabel.textContent = 'Максимум достигнут!';
       bottomInfo.textContent = 'Ты прошёл все уровни! Хомяк гордится тобой 🐹';
       showLevelUp('🏆 МАКСИМУМ!');
+      // keep levelingUp = true so no more taps register
       return;
     }
 
     const lv = LEVELS[level];
-    hamsterImg.style.opacity = '0';
-    setTimeout(() => {
-      hamsterImg.src = lv.img;
-      hamsterImg.style.opacity = '1';
-    }, 200);
+
+    // Swap hamster texture with fade + fallback
+    setHamsterImg(lv.img);
 
     levelBadge.textContent = lv.label;
     rewardLabel.textContent = `+${lv.reward}🪙 за тап`;
-    progressLabel.textContent = `Монет: 0 / ${totalCoinsNeeded[level]}`;
+    progressLabel.textContent = `Монет: 0 / ${DISPLAY_GOALS[level]}`;
 
     if (level === 1) bottomInfo.textContent = 'Уровень 2! Теперь +2🪙 за каждый тап 🔥';
     if (level === 2) bottomInfo.textContent = 'Уровень ПРОФИ! +3🪙 за тап — ты машина! 👑';
 
     showLevelUp('⬆️ LEVEL UP!');
+
+    // Release lock after animation finishes
+    setTimeout(() => { levelingUp = false; }, 900);
   }
 
   function showLevelUp(text) {
@@ -444,9 +447,41 @@
     return n.toString();
   }
 
-  // Init labels
+  // Robust image loader — falls back to emoji if file missing
+  function setHamsterImg(src) {
+    hamsterImg.style.opacity = '0';
+    setTimeout(() => {
+      const testImg = new Image();
+      testImg.onload = () => {
+        hamsterImg.src = src;
+        hamsterImg.style.cssText = ''; // reset any inline styles from onerror
+        hamsterImg.style.opacity = '1';
+        hamsterImg.className = 'hamster-img';
+      };
+      testImg.onerror = () => {
+        // No image found — show emoji instead
+        hamsterImg.src = '';
+        hamsterImg.alt = '🐹';
+        hamsterImg.style.opacity = '1';
+        hamsterImg.style.fontSize = '90px';
+        hamsterImg.style.lineHeight = '1';
+        hamsterImg.style.position = 'absolute';
+        hamsterImg.style.top = '50%';
+        hamsterImg.style.left = '50%';
+        hamsterImg.style.transform = 'translate(-50%, -50%)';
+      };
+      testImg.src = src;
+    }, 200);
+  }
+
+  // Override levelUp's hamster swap to use robust loader
+  // Patch: re-assign setHamsterImg into levelUp closure
+  const _origLevelUp = levelUp;
+
+  // Init
   rewardLabel.textContent = `+${LEVELS[0].reward}🪙 за тап`;
-  progressLabel.textContent = `Монет: 0 / ${totalCoinsNeeded[0]}`;
+  progressLabel.textContent = `Монет: 0 / ${DISPLAY_GOALS[0]}`;
+  setHamsterImg(LEVELS[0].img);
 </script>
 </body>
 </html>
