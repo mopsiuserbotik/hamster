@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Hamster Combat</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --gold: #F5C842;
+    --gold-dark: #D4A017;
+    --blue-btn: #2563EB;
+    --blue-btn-light: #3B82F6;
+    --blue-btn-glow: #60A5FA;
+    --bg-top: #0D1B2A;
+    --bg-bot: #0A2540;
+    --text: #E8F4FF;
+    --bar-bg: #0F2744;
+    --bar-fill: linear-gradient(90deg, #2563EB, #60A5FA);
+  }
+
+  body {
+    font-family: 'Nunito', system-ui, sans-serif;
+    background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bot) 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+    user-select: none;
+  }
+
+  /* Stars background */
+  .stars {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 15%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 25%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 45% 60%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 70%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 10% 80%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 90%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 30% 45%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 10%, rgba(255,255,255,0.6) 0%, transparent 100%);
+  }
+
+  /* Header */
+  .header {
+    position: relative; z-index: 10;
+    width: 100%; padding: 18px 20px 10px;
+    text-align: center;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: var(--text);
+    text-shadow: 0 0 20px rgba(96,165,250,0.6), 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .header h1 span { color: var(--gold); text-shadow: 0 0 16px rgba(245,200,66,0.7); }
+
+  /* Coin counter */
+  .coin-display {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px;
+    margin: 6px 0 4px;
+  }
+  .coin-display .coin-icon { font-size: 28px; line-height: 1; }
+  .coin-display .coin-count {
+    font-size: 40px;
+    font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(245,200,66,0.5);
+    letter-spacing: -1px;
+    transition: transform 0.1s;
+  }
+  .coin-display .coin-count.bump {
+    animation: bump 0.15s ease-out;
+  }
+  @keyframes bump { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+
+  /* Level badge */
+  .level-badge {
+    position: relative; z-index: 10;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(37,99,235,0.25);
+    border: 1px solid rgba(96,165,250,0.35);
+    border-radius: 20px;
+    padding: 4px 14px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--blue-btn-glow);
+    letter-spacing: 0.5px;
+  }
+
+  /* Progress bar area */
+  .progress-area {
+    position: relative; z-index: 10;
+    width: 88%; max-width: 360px;
+    margin-bottom: 20px;
+  }
+  .progress-labels {
+    display: flex; justify-content: space-between;
+    font-size: 12px; font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 6px;
+  }
+  .progress-labels .taps-left { color: var(--blue-btn-glow); }
+  .progress-track {
+    height: 14px;
+    background: var(--bar-bg);
+    border-radius: 99px;
+    overflow: hidden;
+    border: 1px solid rgba(96,165,250,0.2);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--bar-fill);
+    border-radius: 99px;
+    transition: width 0.25s cubic-bezier(.22,1,.36,1);
+    box-shadow: 0 0 10px rgba(96,165,250,0.5);
+    position: relative;
+  }
+  .progress-fill::after {
+    content: '';
+    position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+    background: rgba(255,255,255,0.5);
+    border-radius: 99px;
+    filter: blur(2px);
+  }
+
+  /* Main tap button */
+  .tap-area {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 28px;
+  }
+
+  .tap-btn {
+    width: 230px; height: 230px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #3B82F6, #1D4ED8 60%, #1E3A8A);
+    border: none;
+    cursor: pointer;
+    position: relative;
+    box-shadow:
+      0 0 0 6px rgba(37,99,235,0.25),
+      0 0 0 12px rgba(37,99,235,0.12),
+      0 8px 40px rgba(37,99,235,0.5),
+      0 20px 60px rgba(0,0,0,0.5);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+    animation: breathe 3s ease-in-out infinite;
+    overflow: hidden;
+  }
+
+  @keyframes breathe {
+    0%,100% { box-shadow: 0 0 0 6px rgba(37,99,235,0.25), 0 0 0 12px rgba(37,99,235,0.12), 0 8px 40px rgba(37,99,235,0.5), 0 20px 60px rgba(0,0,0,0.5); }
+    50%      { box-shadow: 0 0 0 9px rgba(37,99,235,0.35), 0 0 0 18px rgba(37,99,235,0.15), 0 8px 55px rgba(37,99,235,0.7), 0 20px 60px rgba(0,0,0,0.5); }
+  }
+
+  .tap-btn::before {
+    content: '';
+    position: absolute; inset: 0; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.22) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .tap-btn:active {
+    transform: scale(0.93);
+    animation: none;
+    box-shadow:
+      0 0 0 4px rgba(37,99,235,0.3),
+      0 4px 20px rgba(37,99,235,0.4),
+      0 8px 30px rgba(0,0,0,0.4);
+  }
+
+  .hamster-img {
+    width: 70%;
+    height: 70%;
+    object-fit: contain;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));
+    transition: opacity 0.4s ease;
+  }
+
+  /* Ripple on tap */
+  .ripple {
+    position: absolute; border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    transform: scale(0);
+    animation: ripple-anim 0.5s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes ripple-anim {
+    to { transform: scale(2.5); opacity: 0; }
+  }
+
+  /* Floating coin animations */
+  .float-coin {
+    position: fixed;
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 10px rgba(245,200,66,0.8);
+    pointer-events: none;
+    z-index: 999;
+    white-space: nowrap;
+    animation: float-up 0.9s cubic-bezier(.22,1,.36,1) forwards;
+  }
+  @keyframes float-up {
+    0%   { opacity: 1; transform: translateY(0) scale(1); }
+    60%  { opacity: 1; transform: translateY(-70px) scale(1.15); }
+    100% { opacity: 0; transform: translateY(-110px) scale(0.9); }
+  }
+
+  /* Bottom info */
+  .bottom-info {
+    position: relative; z-index: 10;
+    text-align: center;
+    color: rgba(255,255,255,0.3);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  /* Level up flash */
+  .levelup-overlay {
+    position: fixed; inset: 0; z-index: 500;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .levelup-overlay.show { opacity: 1; pointer-events: all; }
+  .levelup-overlay::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle, rgba(37,99,235,0.4) 0%, transparent 70%);
+    animation: flash-pulse 0.6s ease-out;
+  }
+  @keyframes flash-pulse {
+    0% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(1.5); }
+  }
+  .levelup-text {
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(245,200,66,0.9), 0 0 60px rgba(245,200,66,0.5);
+    animation: levelup-pop 0.7s cubic-bezier(.22,1,.36,1);
+    text-align: center;
+    line-height: 1.2;
+  }
+  @keyframes levelup-pop {
+    0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+    70% { transform: scale(1.1) rotate(2deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stars"></div>
+
+<!-- Header -->
+<div class="header">
+  <h1>🐹 <span>Hamster</span> Combat</h1>
+</div>
+
+<!-- Coin display -->
+<div class="coin-display">
+  <span class="coin-icon">🪙</span>
+  <span class="coin-count" id="coinCount">0</span>
+</div>
+
+<!-- Level badge -->
+<div class="level-badge" id="levelBadge">⚡ Уровень 1 — Новичок</div>
+
+<!-- Progress bar -->
+<div class="progress-area">
+  <div class="progress-labels">
+    <span id="progressLabel">Тапов: 0 / 100</span>
+    <span class="taps-left" id="rewardLabel">+1🪙 за тап</span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+</div>
+
+<!-- Tap button -->
+<div class="tap-area">
+  <button class="tap-btn" id="tapBtn" onclick="handleTap(event)">
+    <img class="hamster-img" id="hamsterImg" src="hamster_start.png" alt="Хомяк"
+         onerror="this.style.fontSize='80px';this.style.display='flex';this.style.alignItems='center';this.style.justifyContent='center';this.outerHTML='<span style=\'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:90px;\'>🐹</span>'">
+  </button>
+</div>
+
+<!-- Bottom hint -->
+<div class="bottom-info" id="bottomInfo">Тапай хомяка, чтобы зарабатывать монеты!</div>
+
+<!-- Level up overlay -->
+<div class="levelup-overlay" id="levelupOverlay">
+  <div class="levelup-text" id="levelupText">🎉 LEVEL UP!</div>
+</div>
+
+<script>
+  const LEVELS = [
+    { name: 'Новичок',   img: 'hamster_start.png', goal: 100, reward: 1, label: '⚡ Уровень 1 — Новичок' },
+    { name: 'Хорош!',    img: 'hamster_good.png',  goal: 200, reward: 2, label: '🔥 Уровень 2 — Хорош!' },
+    { name: 'Профи',     img: 'hamster_pro.png',   goal: 167, reward: 3, label: '👑 Уровень 3 — Профи'  },
+  ];
+
+  let coins = 0;
+  let level = 0;
+  let tapProgress = 0; // actual tap count for current level
+  let totalCoinsNeeded = [100, 400, 500]; // display goals
+  let coinsThisLevel = 0;
+
+  const coinCountEl   = document.getElementById('coinCount');
+  const progressFill  = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const rewardLabel   = document.getElementById('rewardLabel');
+  const levelBadge    = document.getElementById('levelBadge');
+  const hamsterImg    = document.getElementById('hamsterImg');
+  const tapBtn        = document.getElementById('tapBtn');
+  const bottomInfo    = document.getElementById('bottomInfo');
+  const overlay       = document.getElementById('levelupOverlay');
+  const overlayText   = document.getElementById('levelupText');
+
+  function handleTap(e) {
+    if (level >= LEVELS.length) return;
+
+    const lv = LEVELS[level];
+    coins += lv.reward;
+    tapProgress++;
+    coinsThisLevel += lv.reward;
+
+    // Update coin display
+    coinCountEl.textContent = formatNum(coins);
+    coinCountEl.classList.remove('bump');
+    void coinCountEl.offsetWidth;
+    coinCountEl.classList.add('bump');
+
+    // Float coin label
+    spawnFloat(e, `+${lv.reward}🪙`);
+
+    // Ripple
+    spawnRipple(e);
+
+    // Progress
+    const displayGoal = totalCoinsNeeded[level];
+    const pct = Math.min(coinsThisLevel / displayGoal * 100, 100);
+    progressFill.style.width = pct + '%';
+
+    const displayProgress = Math.min(coinsThisLevel, displayGoal);
+    progressLabel.textContent = `Монет: ${displayProgress} / ${displayGoal}`;
+
+    // Check level up
+    if (coinsThisLevel >= displayGoal) {
+      setTimeout(levelUp, 300);
+    }
+  }
+
+  function levelUp() {
+    level++;
+    coinsThisLevel = 0;
+    progressFill.style.width = '0%';
+
+    if (level >= LEVELS.length) {
+      // Max level reached
+      levelBadge.textContent = '🏆 МАКСИМАЛЬНЫЙ УРОВЕНЬ!';
+      rewardLabel.textContent = '👑 Ты — Профи Хомяк!';
+      progressLabel.textContent = 'Максимум достигнут!';
+      bottomInfo.textContent = 'Ты прошёл все уровни! Хомяк гордится тобой 🐹';
+      showLevelUp('🏆 МАКСИМУМ!');
+      return;
+    }
+
+    const lv = LEVELS[level];
+    hamsterImg.style.opacity = '0';
+    setTimeout(() => {
+      hamsterImg.src = lv.img;
+      hamsterImg.style.opacity = '1';
+    }, 200);
+
+    levelBadge.textContent = lv.label;
+    rewardLabel.textContent = `+${lv.reward}🪙 за тап`;
+    progressLabel.textContent = `Монет: 0 / ${totalCoinsNeeded[level]}`;
+
+    if (level === 1) bottomInfo.textContent = 'Уровень 2! Теперь +2🪙 за каждый тап 🔥';
+    if (level === 2) bottomInfo.textContent = 'Уровень ПРОФИ! +3🪙 за тап — ты машина! 👑';
+
+    showLevelUp('⬆️ LEVEL UP!');
+  }
+
+  function showLevelUp(text) {
+    overlayText.textContent = text;
+    overlay.classList.add('show');
+    setTimeout(() => overlay.classList.remove('show'), 1200);
+  }
+
+  function spawnFloat(e, text) {
+    const el = document.createElement('div');
+    el.className = 'float-coin';
+    el.textContent = text;
+    const x = e.clientX ?? e.touches?.[0]?.clientX ?? window.innerWidth / 2;
+    const y = e.clientY ?? e.touches?.[0]?.clientY ?? window.innerHeight / 2;
+    const offset = (Math.random() - 0.5) * 50;
+    el.style.left = (x + offset - 20) + 'px';
+    el.style.top  = (y - 10) + 'px';
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+  }
+
+  function spawnRipple(e) {
+    const btn = tapBtn;
+    const rect = btn.getBoundingClientRect();
+    const x = (e.clientX ?? window.innerWidth/2) - rect.left;
+    const y = (e.clientY ?? window.innerHeight/2) - rect.top;
+    const size = Math.max(rect.width, rect.height);
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (x - size/2) + 'px';
+    ripple.style.top  = (y - size/2) + 'px';
+    btn.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove());
+  }
+
+  function formatNum(n) {
+    if (n >= 1_000_000) return (n/1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000)     return (n/1_000).toFixed(1) + 'K';
+    return n.toString();
+  }
+
+  // Init labels
+  rewardLabel.textContent = `+${LEVELS[0].reward}🪙 за тап`;
+  progressLabel.textContent = `Монет: 0 / ${totalCoinsNeeded[0]}`;
+</script>
+</body>
+</html>
